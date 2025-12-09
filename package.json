@@ -1,0 +1,26 @@
+{
+  "name": "zombie-bridge",
+  "version": "1.0.0",
+  "description": "A highly addictive HTML5 game combining block stacking and zombie survival, built with Phaser for GameDistribution.com.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "http-server . -c-1",
+    "install:phaser": "pnpm install phaser"
+  },
+  "keywords": [
+    "phaser",
+    "html5",
+    "game",
+    "zombie",
+    "puzzle",
+    "gamedistribution"
+  ],
+  "author": "Manus AI",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
