@@ -34,12 +34,10 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // 0. Initialize GD SDK and start gameplay
-        if (window.GD_SDK) {
-            window.GD_SDK.init(() => {
-                window.GD_SDK.gameplayStart();
-            });
-        }
+        // 0. Set up GameMonetize SDK event listeners
+        document.addEventListener('sdk_game_pause', this.pauseGame.bind(this));
+        document.addEventListener('sdk_game_start', this.resumeGame.bind(this));
+
         // 1. Set up the background and environment
         this.add.image(400, 300, 'background').setOrigin(0.5).setScale(1.5);
 
@@ -103,7 +101,8 @@ class GameScene extends Phaser.Scene {
         });
 
         // Play ambient zombie groan
-        this.sound.add('zombie_groan_sfx', { loop: true, volume: 0.5 }).play();
+        this.ambientSound = this.sound.add('zombie_groan_sfx', { loop: true, volume: 0.5 });
+        this.ambientSound.play();
 
         // 9. Set up collision between blocks and ground
         this.physics.add.collider(this.blocks, this.ground, this.handleBlockStop, null, this);
@@ -269,25 +268,20 @@ class GameScene extends Phaser.Scene {
 
     gameOver(reason) {
         // Game Over
-        this.zombieSpawnTimer.paused = true;
-        this.zombieTimer.paused = true;
-        this.physics.pause();
-        this.sound.stopAll();
+        this.isGameOver = true;
+        this.isLevelWin = false;
+        this.pauseGame(); // Pause all game activity
+
         this.sound.play('lose_sfx');
         this.add.text(400, 300, `GAME OVER\n${reason}`, { fontSize: '48px', fill: '#ff0000' }).setOrigin(0.5);
 
-        // Stop gameplay and show an ad before restarting
-        if (window.GD_SDK) {
-            window.GD_SDK.gameplayStop();
-            window.GD_SDK.showAd('interstitial', {
-                adFinished: () => {
-                    this.time.delayedCall(1000, () => {
-                        this.scene.restart();
-                    }, [], this);
-                }
-            });
+        // Show ad and wait for resume event to restart
+        if (typeof sdk !== 'undefined' && sdk.showBanner !== 'undefined') {
+            sdk.showBanner();
+            // The resumeGame() function will be called by the SDK_GAME_START event,
+            // which will then handle the scene restart.
         } else {
-            // No SDK, just restart
+            // No SDK, just restart after a delay
             this.time.delayedCall(3000, () => {
                 this.scene.restart();
             }, [], this);
@@ -296,32 +290,23 @@ class GameScene extends Phaser.Scene {
 
     levelWin() {
         // Level Win
-        this.zombieSpawnTimer.paused = true;
-        this.zombieTimer.paused = true;
-        this.physics.pause();
-        this.sound.stopAll();
+        this.isLevelWin = true;
+        this.isGameOver = false;
+        this.pauseGame(); // Pause all game activity
+
         this.sound.play('win_sfx');
 
         const stars = levelManager.calculateStars();
         const message = `LEVEL COMPLETE!\n${stars} STAR${stars === 1 ? '' : 'S'} EARNED!`;
         this.add.text(400, 300, message, { fontSize: '48px', fill: '#00ff00' }).setOrigin(0.5);
 
-        // Stop gameplay and show an ad before advancing
-        if (window.GD_SDK) {
-            window.GD_SDK.gameplayStop();
-            window.GD_SDK.showAd('rewarded', {
-                adFinished: () => {
-                    this.time.delayedCall(1000, () => {
-                        if (levelManager.nextLevel()) {
-                            this.scene.restart();
-                        } else {
-                            this.add.text(400, 400, 'CAMPAIGN COMPLETE!', { fontSize: '32px', fill: '#ffff00' }).setOrigin(0.5);
-                        }
-                    }, [], this);
-                }
-            });
+        // Show ad and wait for resume event to advance
+        if (typeof sdk !== 'undefined' && sdk.showBanner !== 'undefined') {
+            sdk.showBanner();
+            // The resumeGame() function will be called by the SDK_GAME_START event,
+            // which will then handle the level advance/restart.
         } else {
-            // No SDK, just advance
+            // No SDK, just advance after a delay
             this.time.delayedCall(3000, () => {
                 if (levelManager.nextLevel()) {
                     this.scene.restart();
@@ -331,6 +316,39 @@ class GameScene extends Phaser.Scene {
             }, [], this);
         }
     }
+
+    // --- GameMonetize SDK Helper Functions ---
+
+    pauseGame() {
+        this.zombieSpawnTimer.paused = true;
+        this.zombieTimer.paused = true;
+        this.physics.pause();
+        this.ambientSound.pause();
+        this.scene.pause(); // Pause the scene update loop
+    }
+
+    resumeGame() {
+        this.zombieSpawnTimer.paused = false;
+        this.zombieTimer.paused = false;
+        this.physics.resume();
+        this.ambientSound.resume();
+        this.scene.resume(); // Resume the scene update loop
+
+        // Check if we need to restart or advance the level after the ad
+        if (this.isGameOver) {
+            this.isGameOver = false; // Reset flag
+            this.scene.restart();
+        } else if (this.isLevelWin) {
+            this.isLevelWin = false; // Reset flag
+            if (levelManager.nextLevel()) {
+                this.scene.restart();
+            } else {
+                // Campaign complete message is already displayed in levelWin()
+            }
+        }
+    }
+
+    // --- End GameMonetize SDK Helper Functions ---
 
     createMergeParticles(x, y, textureKey) {
         const particles = this.add.particles(x, y, textureKey, {
