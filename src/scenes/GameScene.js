@@ -67,6 +67,7 @@ class GameScene extends Phaser.Scene {
         // 6. Set up input controls
         this.cursors = this.input.keyboard.createCursorKeys();
         this.input.keyboard.on('keydown-SPACE', this.handleDrop, this);
+        this.input.on('pointerdown', this.handleTouch, this);
 
         // 7. Start the zombie horde
         this.zombies = this.physics.add.group();
@@ -114,7 +115,8 @@ class GameScene extends Phaser.Scene {
             this.player.setVelocityX(-160);
         } else if (this.cursors.right.isDown) {
             this.player.setVelocityX(160);
-        } else {
+        } else if (this.player.body.velocity.x !== 0) {
+            // Stop player if no key is pressed, but only if they are not moving via touch
             this.player.setVelocityX(0);
         }
 
@@ -187,6 +189,34 @@ class GameScene extends Phaser.Scene {
 
             // Record the drop
             levelManager.recordDrop();
+        }
+    }
+
+    handleTouch(pointer) {
+        const onSwitch = Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), this.dropSwitch.getBounds());
+
+        if (onSwitch) {
+            // If player is on the switch, a tap means drop the block
+            this.handleDrop();
+        } else {
+            // If player is not on the switch, a tap means move to the switch
+            const targetX = this.dropSwitch.x;
+            const currentX = this.player.x;
+            const speed = 160;
+
+            if (targetX > currentX) {
+                this.player.setVelocityX(speed);
+            } else if (targetX < currentX) {
+                this.player.setVelocityX(-speed);
+            }
+
+            // Stop movement when player reaches the switch
+            this.time.delayedCall(10, () => {
+                if (Math.abs(this.player.x - targetX) < 5) {
+                    this.player.setVelocityX(0);
+                    this.player.x = targetX; // Snap to position
+                }
+            }, [], this);
         }
     }
 
