@@ -118,4 +118,5 @@ class LevelManager {
     }
 }
 
-export default LevelManager;
+// Expose globally
+window.LevelManager = LevelManager;

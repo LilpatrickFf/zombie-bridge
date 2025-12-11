@@ -1,6 +1,3 @@
-import Phaser from 'phaser';
-import { levelManager } from '../main';
-
 const BLOCK_TYPES = [
     { key: 'block_red', mergeTo: 'block_orange' },
     { key: 'block_orange', mergeTo: 'block_yellow' },
@@ -52,7 +49,6 @@ class GameScene extends Phaser.Scene {
         // Left platform (where the player starts)
         this.ground.create(100, 580, 'ground_platform').setScale(0.5, 1).refreshBody();
         // Right platform (the safe zone)
-        const currentLevel = levelManager.getCurrentLevel();
         const safeZoneX = 800 - currentLevel.chasmWidth / 2; // Dynamically position safe zone
         this.safeZone = this.ground.create(safeZoneX, 580, 'safe_zone').setScale(0.5, 1).refreshBody();
         // 3. Create the player character
@@ -74,7 +70,6 @@ class GameScene extends Phaser.Scene {
 
         // 7. Start the zombie horde
         this.zombies = this.physics.add.group();
-        const currentLevel = levelManager.getCurrentLevel();
         this.zombieSpawnTimer = this.time.addEvent({
             delay: currentLevel.zombieSpawnDelay,
             callback: this.spawnZombie,
@@ -89,7 +84,7 @@ class GameScene extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
-        this.zombieTimeRemaining = levelManager.getCurrentLevel().zombieSpawnDelay / 1000; // Initial spawn time
+        this.zombieTimeRemaining = currentLevel.zombieSpawnDelay / 1000; // Initial spawn time
         this.zombieTimerText = this.add.text(50, 50, 'Zombies in: 5', { fontSize: '24px', fill: '#ff0000' });
 
         // 8. Start the block spawning loop
@@ -251,11 +246,17 @@ class GameScene extends Phaser.Scene {
 
                 // Record the merge
                 levelManager.recordMerge();
-            }een to the left
+            }
+        }
+    }
+
+    spawnZombie() {
+        const currentLevel = levelManager.getCurrentLevel();
+        // Spawn the zombie off-screen to the left
         const zombie = this.zombies.create(-50, 500, 'zombie');
         zombie.setCollideWorldBounds(true);
         this.physics.add.collider(zombie, this.ground);
-        this.zombieTimeRemaining = this.zombieSpawnTimer.delay / 1000; // Reset timer display
+        this.zombieTimeRemaining = currentLevel.zombieSpawnDelay / 1000; // Reset timer display
     }
 
     updateZombieTimer() {
@@ -367,4 +368,5 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-export default GameScene;
+// Expose globally
+window.GameScene = GameScene;

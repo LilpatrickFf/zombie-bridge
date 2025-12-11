@@ -1,11 +1,6 @@
-import Phaser from 'phaser';
-
-// Import the main game scene
-import GameScene from './scenes/GameScene';
-import LevelManager from './LevelManager';
-
 // Global game state manager
-export const levelManager = new LevelManager();
+// LevelManager is now exposed globally from src/LevelManager.js
+const levelManager = new LevelManager();
 
 // Game configuration
 const config = {
@@ -21,7 +16,7 @@ const config = {
         }
     },
     scene: [
-        GameScene // Add the main game scene
+        GameScene // GameScene is now exposed globally from src/scenes/GameScene.js
     ],
     scale: {
         mode: Phaser.Scale.FIT, // Scale the game to fit the screen
@@ -34,6 +29,3 @@ const config = {
 
 // Initialize the game
 const game = new Phaser.Game(config);
-
-// Export the game instance for global access if needed
-export default game;
